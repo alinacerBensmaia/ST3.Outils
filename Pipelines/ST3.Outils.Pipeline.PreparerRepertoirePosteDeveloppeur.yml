@@ -1,0 +1,87 @@
+name: "Mise à jour de dépôt de l'outils «Préparer le poste développeur»"
+appendCommitMessageToRunName: false
+trigger: none
+
+resources:
+  repositories:
+    - repository: Outils
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+parameters: 
+  - name: FORCER
+    displayName: "Forcer une mise a jour complete du dépôt? (Ou seulement traiter les nouveaux artefacts ajouté depuis la dernière exécution)"
+    type: string
+    default: 'Non'   
+    values:
+      - Oui
+      - Non 
+  - name: repReseauArtefacts
+    default: '\\fic2\Unit\DevOps_RRQAF\Artefacts'
+    displayName: "Chemin reseau du dépôt des artefacts à traiter"
+  - name: repLocalArtefacts
+    default: 'D:\DepotArtefacts'
+    displayName: "Chemin local sur le serveur ou repliquer les artefacts"
+  - name: repLocalPrepPosteDev
+    default: 'D:\PrepPosteDev'
+    displayName: "Chemin local sur le serveur ou generer le depot PrepPosteDev (doit se nommer PrepPosteDev ou PrepPosteDev_de pour les essaies)"
+  - name: repReseauPrepPosteDev
+    default: '\\fic2\Unit\DevOps_RRQAF\PrepPosteDev'
+    displayName: "Chemin reseau ou repliquer le depot PrepPosteDev"
+  #- name: heureActuelle
+  #  default: $[format('{0:HH}', pipeline.startTime)]
+
+schedules:
+  - cron: "0 5-21 * * *"
+    displayName: "Run every hour"
+    branches:
+      include:
+        - master        
+    always: true
+
+pool:
+  name: Compilation RRQ-AF
+
+stages:
+  - stage: PipelineExecution
+    displayName: "Repliquer les artefacts en local sur le serveur"
+    jobs:
+      - job: ReplicationDepotArtefactsSurServeur
+        displayName: "Repliquer les artefacts en local sur le serveur"
+        pool: 
+          name: Compilation RRQ-AF             
+        steps:
+          - template: ST3.Outils.Steps.ReplicationDepotArtefactsSurServeur.yml
+            parameters:
+              repReseauArtefacts: "${{ parameters.repReseauArtefacts }}" 
+              repLocalArtefacts: "${{ parameters.repLocalArtefacts }}"
+
+  - stage: PreparerRepertoiresPosteDeveloppeur
+    displayName: "Traitement des artefacts..."
+    jobs:
+      - job: PreparerRepertoiresPosteDeveloppeur
+        timeoutInMinutes: 240  # 4 h 
+        displayName: "Traitement des artefacts..."
+        pool: 
+          name: Compilation RRQ-AF             
+        steps:
+          - template: ST3.Outils.Steps.PreparerRepertoiresPosteDeveloppeur.yml
+            parameters:
+              repLocalArtefacts: "${{ parameters.repLocalArtefacts }}"
+              repLocalPrepPosteDev: "${{ parameters.repLocalPrepPosteDev }}" 
+              FORCER: ${{ parameters.FORCER }}
+
+  - stage: ReplicationPrepPosteDevSurReseau
+    displayName: "Repliquer le depot genere sur le reseau"
+    jobs:
+      - job: ReplicationPrepPosteDevSurReseau
+        displayName: "Repliquer le depot PrepPosteDev sur le reseau"
+        pool: 
+          name: Compilation RRQ-AF             
+        steps:
+
+          - template: ST3.Outils.Steps.ReplicationPrepPosteDevSurReseau.yml
+            parameters:
+              repLocalPrepPosteDev: "${{ parameters.repLocalPrepPosteDev }}" 
+              repReseauPrepPosteDev: "${{ parameters.repReseauPrepPosteDev }}"

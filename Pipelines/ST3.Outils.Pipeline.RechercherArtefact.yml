@@ -1,0 +1,39 @@
+# ST3.Outils.Pipeline.RechercherArtefact
+trigger: none
+
+parameters:
+- name: environnement
+  displayName: Dans quel environnement?  
+  type: string
+  default: 'UNIT'
+  values:
+  - UNIT
+  - INTG
+  - INTH
+  - INTX
+  - SIMI
+  - SIML
+  - ACCP
+  - FORA
+  - PROD
+  - UNIT-DEV
+  - INTG-DEV
+  - PROD-DEV
+
+- name: nomArtefact
+  displayName: Nom de l'artefact?  
+  type: string
+  default: ''
+
+resources:
+  repositories:
+    - repository: ST3.Outils.DevOps
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+extends:
+  template: Pipelines/Extends/ST3.Deploiement.Pipeline.Extends.RechercherArtefact.yml@ST3.Outils.DevOps
+  parameters:
+    environnement: ${{ parameters.environnement }}
+    nomArtefact: ${{ parameters.nomArtefact }}

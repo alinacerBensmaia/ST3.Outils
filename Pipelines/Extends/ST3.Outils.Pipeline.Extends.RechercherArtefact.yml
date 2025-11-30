@@ -1,0 +1,136 @@
+# ST3.Outils.Pipeline.Extends.RechercherArtefact
+parameters:
+  - name: environnement
+    type: string
+    default: 'UNIT'
+
+  - name: nomArtefact
+    type: string
+    default: ''
+
+variables:
+  - name: repArtefactsEnAttente
+    value: 'C:\RRQ\Libraire_DevOps\Artefacts\EnAttente\'
+
+  - name: repArtefactsInstalles
+    value: 'C:\RRQ\Libraire_DevOps\Artefacts\Installes\'
+
+  - name: repArtefactsHistorique
+    value: 'C:\RRQ\Libraire_DevOps\Artefacts\Historique\'
+
+stages:
+- stage: RechercherDansEnAttente
+  displayName: 'EnAttente'
+  jobs:
+  - deployment: ExecutionDuScript
+    displayName: "Rechercher EnAttente"
+    environment:
+      name: '${{ parameters.environnement }}'
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host 'Répertoire des artefacts --> ' $(repArtefactsEnAttente)
+                Write-Host 'Artefact à rechercher    --> ' ${{ parameters.nomArtefact }}
+                $cheminComplet = "$(repArtefactsEnAttente)" + "${{ parameters.nomArtefact }}" 
+                Write-Host $cheminComplet
+                if (Test-Path -Path $cheminComplet) {
+                  Write-Host 'Artefact trouvé'
+                } else {
+                  Write-Host "Artefact Introuvable"
+                  throw "Artefact Introuvable"
+                }
+
+- stage: RechercherDansInstalle
+  displayName: 'Installes'
+  dependsOn: RechercherDansEnAttente
+  condition: succeededOrFailed()
+  jobs:
+  - deployment: ExecutionDuScript
+    displayName: "Installes"
+    environment:
+      name: '${{ parameters.environnement }}'
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host 'Répertoire des artefacts --> ' $(repArtefactsInstalles)
+                Write-Host 'Artefact à rechercher    --> ' ${{ parameters.nomArtefact }}
+                $cheminComplet = "$(repArtefactsInstalles)" + "${{ parameters.nomArtefact }}" + ".ps1"
+                Write-Host $cheminComplet
+                if (Test-Path -Path $cheminComplet) {
+                  Write-Host 'Artefact trouvé'
+                } else {
+                  Write-Host "Artefact Introuvable"
+                  throw "Artefact Introuvable"
+                }
+
+- stage: RechercherDansHistorique
+  displayName: 'Historique'
+  dependsOn: RechercherDansInstalle
+  condition: succeededOrFailed()
+  jobs:
+  - deployment: ExecutionDuScript
+    displayName: "Historique"
+    environment:
+      name: '${{ parameters.environnement }}'
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host 'Répertoire des artefacts --> ' $(repArtefactsHistorique)
+                Write-Host 'Artefact à rechercher    --> ' ${{ parameters.nomArtefact }}
+                $cheminComplet = "$(repArtefactsHistorique)" + "${{ parameters.nomArtefact }}" + ".ps1"
+                Write-Host $cheminComplet
+                if (Test-Path -Path $cheminComplet) {
+                  Write-Host 'Artefact trouvé'
+                } else {
+                  Write-Host "Artefact Introuvable"
+                  throw "Artefact Introuvable"
+                }
+
+- stage: Resultat
+  displayName: 'Résultat'
+  dependsOn: RechercherDansHistorique
+  condition: succeededOrFailed()
+  jobs:
+  - deployment: ExecutionDuScript
+    displayName: "Résultat"
+    environment:
+      name: '${{ parameters.environnement }}'
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                $cheminComplet1 = "$(repArtefactsInstalles)" + "${{ parameters.nomArtefact }}" + ".ps1"
+                $cheminComplet2 = "$(repArtefactsEnAttente)" + "${{ parameters.nomArtefact }}"
+                $cheminComplet3 = "$(repArtefactsHistorique)" + "${{ parameters.nomArtefact }}" + ".ps1"
+                Write-Host $cheminComplet1
+                Write-Host $cheminComplet2
+                Write-Host $cheminComplet3
+                if ((Test-Path -Path $cheminComplet1) -or (Test-Path -Path $cheminComplet2) -or (Test-Path -Path $cheminComplet3)) {
+                  Write-Host 'Artefact trouvé'
+                } else {
+                  Write-Host "Artefact Introuvable"
+                  throw "Artefact Introuvable"
+                }

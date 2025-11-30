@@ -1,0 +1,45 @@
+# Pipeline de build qui permet de démarrer tous les tests automatisés des composants du dépot 
+# ST3.Test.Build.Template.TesterTout.yml 
+# ST3.Test.Deploiement.Template.TesterTout.yml
+# ST3.Test.Installation.Script.TesterTout.yml 
+
+#Pas d'intrégration continu
+trigger: none
+
+# Le Pipeline est planifié d'être exécuté une fois par jour
+schedules:
+- cron: "0 8 * * *"
+  displayName: Build d'essais à tous les matins
+  branches:
+    include:
+    - Dev
+
+resources:
+  repositories:
+    - repository: Outils
+      type: git
+      name: ST3.Outils.DevOps
+      ref: Dev
+
+pool:
+    name: Azure Pipelines
+    vmImage: 'windows-latest'
+  
+stages:
+ - stage: TestBuildTemplate
+   displayName: Tests des templates de build et publication
+   dependsOn: [] 
+   jobs:
+    - template: ..\..\Build\Tests\ST3.Test.Build.Template.TesterTout.yml
+   
+ - stage: TestDeploiement
+   displayName: Tests des templates et des scripts de deploiement
+   dependsOn: [] 
+   jobs:
+    - template: ..\..\Deploiement\Tests\ST3.Test.Deploiement.Template.TesterTout.yml
+
+ - stage: TestInstallation
+   displayName: Tests des scripts d'installation
+   dependsOn: [] 
+   jobs:
+    - template: ..\..\Installation\Tests\ST3.Test.Installation.Script.TesterTout.yml

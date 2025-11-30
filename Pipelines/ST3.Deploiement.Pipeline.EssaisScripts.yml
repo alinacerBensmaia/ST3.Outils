@@ -1,0 +1,21 @@
+trigger: none
+
+pool:
+  name: Azure Pipelines
+  vmImage: 'windows-latest'
+
+stages:
+ - stage: Essais
+   displayName : Exécution des essais des scripts 
+   jobs:
+    - job: Essais
+      displayName: Essais
+      pool : 
+       name: Azure Pipelines
+       vmImage: 'windows-latest'
+      steps: 
+       - task: PowerShell@2
+         displayName: Essais ST3.Test.Deploiement.Script.AlimenterDepotCompilation
+         inputs:
+            pwsh: true
+            filePath: '$(Build.SourcesDirectory)\Deploiement\Tests\ST3.Test.Deploiement.Script.AlimenterDepotCompilation.ps1'

@@ -1,0 +1,41 @@
+# ST3.Outils.Pipeline.Extends.SupprimerUnArtefactEnAttente
+parameters:
+  - name: environnement
+    type: string
+    default: 'UNIT'
+
+  - name: nomArtefact
+    type: string
+    default: ''
+
+variables:
+  - name: repArtefacts
+    value: 'C:\RRQ\Libraire_DevOps\Artefacts\EnAttente\'
+
+stages:
+  - stage: ExecutionDuScript
+    displayName: 'Supprimer un artefact sur les serveurs'
+    jobs:
+      - deployment: ExecutionDuScript
+        displayName: "Suppression"
+        environment:
+          name: '${{ parameters.environnement }}'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: PowerShell@2
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Write-Host 'Répertoire des artefacts --> ' $(repArtefacts)
+                      Write-Host 'Artefact à supprimer     --> ' ${{ parameters.nomArtefact }}
+                      $cheminComplet = "$(repArtefacts)" + "${{ parameters.nomArtefact }}"
+                      Write-Host $cheminComplet
+                      if (Test-Path -Path $cheminComplet) {
+                        Remove-Item $cheminComplet -Recurse -Force -EA SilentlyContinue -Verbose
+                        Write-Host 'Répertoire supprimé avec succès'
+                      } else {
+                        Write-Host 'Répertoire introuvable'
+                      }

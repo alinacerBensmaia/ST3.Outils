@@ -1,0 +1,180 @@
+parameters:
+  - name: RQAF_pool
+    type: string
+    default: 'Compilation RRQ-AF'
+  - name: environments
+    type: object
+    default:
+      - UNIT
+      - INTG
+      - INTH
+      - INTX
+      - SIMI
+      - ACCP
+      - FORA
+      - SIML
+      - PROD
+      - PROP
+
+trigger: none
+
+variables:
+  - group: GrST3.Build.PathPhase
+  - group: GrST3.Deploiement.PathDestination
+  - name: RepertoireDestination
+    value: 'C:\RRQ\Libraire_DevOps\Outils\Scripts'
+  - name: RepertoireDestinationReseau
+    value: '\\fic2\Unit\DevOps_RRQAF'
+
+stages:
+- stage: CreationArtefact
+  displayName: 'Création de l’artefact et copie des fichiers'
+  jobs:
+  - job: CreationPackage
+    displayName: 'Création du package'
+    pool:
+      name: ${{ parameters.RQAF_pool }}
+    steps:
+
+    - task: CopyFiles@2
+      displayName: "Copie des scripts vers depot CompilationServeurs"
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)'
+        Contents: |
+          Build/ST3.Build.Script.ValiderManifeste.ps1
+          Build/ST3.Build.Replication.DepotsFichiersVersServeurBuild.Script.ps1
+          Build/ST3.Build.Script.DecompressionXSN.ps1
+          Build/Script/ST3.Script.BuildSSIS.ps1          
+        TargetFolder: '\\fic2\UNIT\DevOps_RRQAF\CompilationServeurs\RRQ\Libraire_DevOps\Outils\Scripts\Build'
+        flattenFolders: true
+        CleanTargetFolder: false
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: "Copie fichiers repertoire Installation dans l'artefact"
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)\Installation'
+        Contents: '*.*'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)\Scripts'
+
+    - task: CopyFiles@2
+      displayName: "Copie fichier XwXuServeurs.xml dans l'artefact"
+      inputs:
+        SourceFolder: '\\fic2\po\Web\Support\SystmGradtWeb\XML'
+        Contents: 'XwXuServeurs.xml'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)\Scripts'
+
+    - task: CopyFiles@2
+      displayName: "Copie fichier ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1 dans l'artefact"
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)\Deploiement'
+        Contents: 'ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)\Deploiement'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: "Copie fichier ST20002_Serveurs.xml dans l'artefact"
+      inputs:
+        SourceFolder: '\\Ziagvsporq11\stcm\Depot\Parametres'
+        Contents: 'ST20002_Serveurs.xml'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)\Scripts'
+
+    - task: CopyFiles@2
+      displayName: 'Copie du repertoire Build vers $(RepertoireDestination)\Build'
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)\Build'
+        Contents: '*.ps1'
+        TargetFolder: '$(RepertoireDestination)\Build'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: 'Copie fichier ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1 vers $(RepertoireDestination)\Deploiement'
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)\Deploiement'
+        Contents: 'ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1'
+        TargetFolder: '$(RepertoireDestination)\Deploiement'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: 'Copie repertoire Scripts vers $(RepertoireDestinationReseau)\Installation'
+      inputs:
+        SourceFolder: '$(Build.ArtifactStagingDirectory)\Scripts'
+        Contents: '**'
+        TargetFolder: '$(RepertoireDestinationReseau)\Installation'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: 'Copie fichier ST20002_Serveurs.xml vers $(RepertoireDestination)\Deploiement'
+      inputs:
+        SourceFolder: '\\Ziagvsporq11\stcm\Depot\Parametres'
+        Contents: 'ST20002_Serveurs.xml'
+        TargetFolder: '$(RepertoireDestination)\Deploiement'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: 'Copie fichier XwXuServeurs.xml SGW vers $(RepertoireDestination)\Deploiement'
+      inputs:
+        SourceFolder: '\\fic2\po\Web\Support\SystmGradtWeb\XML'
+        Contents: 'XwXuServeurs.xml'
+        TargetFolder: '$(RepertoireDestination)\Deploiement'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: 'Copie des fichiers serveurs STCM et SGW de Dev sur le serveur de compilation'
+      inputs:
+        SourceFolder: '\\Ziagvsdevq11\stcm\Depot\Parametres\Azure_FichiersServeurs'
+        Contents: '**'
+        TargetFolder: '$(RepertoireDestination)\Deploiement\Dev'
+        OverWrite: true
+
+    - task: CopyFiles@2
+      displayName: "Copie de ST3.Installation.Script.Artefact.ActionInstallation.exe dans l'artefact"
+      inputs:
+        SourceFolder: '\\Ziagvsporq11\stcm\Depot\Parametres\Azure_Outils\ST3N953_ActionInstallation\bin'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)\Scripts'
+        OverWrite: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: "Publier l'artefact"
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: '$(Build.DefinitionName).$(Build.BuildNumber)_azure'
+
+# Déploiement par environnement
+- ${{ each env in parameters.environments }}:
+  - stage: ${{ env }}
+    displayName: "Déploiement - ${{ env }}"
+    dependsOn:
+      - CreationArtefact
+    jobs:
+      - ${{ if or(eq(env, 'INTG'), eq(env, 'ACCP')) }}:
+        - job: Validation
+          displayName: "Approbation requise pour ${{ env }}"
+          pool: server
+          timeoutInMinutes: 1440
+          steps:
+            - task: ManualValidation@0
+              timeoutInMinutes: 1440
+              inputs:
+                instructions: "SVP approuver le déploiement vers l'environnement ${{ env }}"
+                onTimeout: 'reject'
+
+      - deployment: Deploiement_${{ env }}
+        displayName: "Déploiement serveurs en ${{ env }}"
+        ${{ if or(eq(env, 'INTG'), eq(env, 'ACCP')) }}:
+          dependsOn: ['Validation']
+        environment:
+          name: ${{ env }}
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: CopyFiles@2
+                  displayName: "Copie des scripts vers $(RepertoireDestination)"
+                  inputs:
+                    SourceFolder: '$(Pipeline.Workspace)\$(Build.DefinitionName).$(Build.BuildNumber)_azure\Scripts'
+                    Contents: '**'
+                    TargetFolder: '$(RepertoireDestination)'
+                    CleanTargetFolder: true

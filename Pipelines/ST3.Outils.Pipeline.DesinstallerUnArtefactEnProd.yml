@@ -1,0 +1,35 @@
+#Pipeline pour effectuer la désinstallation d'un artefact en phase qui a été déployé vers les environnements 
+trigger: none
+
+pool:
+  name: Compilation RRQ-AF
+
+name: "Lancer la désinstallation d'un artefact sur les serveurs"
+appendCommitMessageToRunName: false
+
+parameters:
+  - name: nomArtefact
+    displayName: "Nom de l'artefact à désinstaller? (ex: FC_Fichier_Inscription_Clientele.Web.20240910.1.Phase6_azure)"
+    type: string
+    default: ''
+
+  - name: desinstallationNonPhasable
+    displayName: Retirer aussi les composants non phasables? 
+    type: boolean
+    default: false
+
+  - name: numeroDemandeChangement
+    displayName: Numero de demande de changement (obligatoire)? 
+    type: string
+    default: CHG???????
+
+extends:
+  template: ST3.Outils.Pipeline.DesinstallerUnArtefact.Etapes.yml
+  parameters:
+    environments:      
+      - 'PROD'
+      - 'PROP'
+    nomArtefact: ${{ parameters.nomArtefact }}    
+    desinstallationNonPhasable: ${{ parameters.desinstallationNonPhasable }}
+    numeroDemandeChangement: ${{ parameters.numeroDemandeChangement }}    
+    

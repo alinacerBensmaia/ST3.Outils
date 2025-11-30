@@ -1,0 +1,63 @@
+# Déploiement des scripts qui effectuent l'installation des artefacts sur les serveurs
+#   À déployer lors d'une fusion avec la branche master
+
+trigger: none
+
+pool:
+  name: Compilation RRQ-AF
+
+variables:
+- group: GrST3.Build.PathPhase
+- group: GrST3.Deploiement.PathDestination
+- name: RepertoireDestination
+  value: 'C:\RRQ\Libraire_DevOps\Outils\Scripts'
+- name: RepertoireDestinationReseau
+  value: '\\fic2\Unit\DevOps_RRQAF'
+stages:
+ - stage: Build
+   displayName : Compilation et creation artefact
+   jobs:
+    - job: CreationPackage
+      displayName: Création du package
+      pool : 
+       name: Compilation RRQ-AF
+      steps: 
+       - task: CopyFiles@2
+         displayName: 'Copie des source dans le répertoires des artefacts'
+         inputs:
+          SourceFolder: '$(Build.SourcesDirectory)\Installation'
+          Contents: '**'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+       - task: CopyFiles@2
+         displayName: 'Copie du fichier XwXuServeurs.xml'
+         inputs:
+          SourceFolder: '\\fic2\po\Web\Support\SystmGradtWeb\XML'
+          Contents: 'XwXuServeurs.xml'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+       - task: CopyFiles@2
+         displayName: 'Copie du fichier ST20002_Serveurs.xml'
+         inputs:
+          SourceFolder: '\\Ziagvsporq11\stcm\Depot\Parametres'
+          Contents: 'ST20002_Serveurs.xml'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+       - task: CopyFiles@2
+         displayName: 'Copie de fichiers powershell pour le serveur de build'
+         inputs:
+          SourceFolder: '$(Build.SourcesDirectory)\Build'
+          Contents: '*.ps1'
+          TargetFolder: '$(RepertoireDestination)\Build'
+          OverWrite: True
+       - task: CopyFiles@2
+         displayName: 'Copie des fichiers dans le dépôt du réseau pour poste dev'
+         inputs:
+          SourceFolder: '$(build.artifactstagingdirectory)\scripts'
+          Contents: '**'
+          TargetFolder: '$(RepertoireDestinationReseau)\Installation'
+          OverWrite: True
+       - task: PublishBuildArtifacts@1
+         displayName: 'Publier artefact des scripts'
+         inputs:
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+          artifactName: '$(build.definitionname).$(build.buildnumber)_azure'
+
+ 

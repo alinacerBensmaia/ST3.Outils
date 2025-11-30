@@ -1,0 +1,103 @@
+#Pipeline pour effectuer la suppression des composants qui a été déployé vers les environnements d'essais.
+trigger: none
+
+name: 'Supprimer des composants sur les serveurs'
+appendCommitMessageToRunName: false
+
+parameters:
+
+- name: nomComposants
+  displayName: "Nom des composants ?(C:\\rrq\\exec\\test.dll;C:\\rrq\\exec\\test.pdb)"
+  type: string
+  default: ''
+
+- name: UNIT_Dev
+  displayName: Unitaire-Dev
+  type: boolean
+  default: false
+- name: INTG_Dev
+  displayName: Intégration-Dev
+  type: boolean
+  default: false
+- name: PROD_Dev
+  displayName: Production-Dev
+  type: boolean
+  default: false
+  
+pool:
+  name: Compilation RRQ-AF
+
+stages:
+ - stage: ExecutionDuScriptUNIT 
+   displayName: 'Unitaire'         
+   condition: always()
+   jobs:    
+    - deployment: SupprimerSurLesServeurs_UNIT_Dev
+      displayName: "Execution sur "
+      condition: eq('${{ parameters.UNIT_Dev }}', true)
+      environment: 
+       name: 'UNIT-Dev'
+       resourceType: VirtualMachine
+      strategy:
+       runOnce:
+        deploy:
+          steps:
+            - checkout: self                
+            - task: PowerShell@2
+              name: "SupprimerLesComposants"
+              continueOnError: true
+              displayName: "Supprimer les composants ${{parameters.nomComposants}}"
+              inputs:
+                pwsh: false
+                filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1' 
+                arguments: >
+                  -nomComposants: "${{parameters.nomComposants}}"
+ 
+ - stage: ExecutionDuScriptINTG 
+   displayName: 'Integration-Dev'      
+   condition: eq('${{ parameters.PROD_Dev }}', true)
+   jobs:    
+    - deployment: SupprimerSurLesServeurs_INTG
+      displayName: "Execution sur "
+      condition: eq('${{ parameters.INTG_Dev }}', true)
+      environment: 
+       name: 'INTG-Dev'
+       resourceType: VirtualMachine
+      strategy:
+       runOnce:
+        deploy:
+          steps:
+            - checkout: self                
+            - task: PowerShell@2
+              name: "SupprimerComposants"
+              continueOnError: true
+              displayName: "Supprimer les composants ${{parameters.nomComposants}}"
+              inputs:
+                pwsh: false
+                filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1' 
+                arguments: >
+                  -nomComposants: "${{parameters.nomComposants}}"
+
+ - stage: ExecutionDuScriptEnProd_Dev 
+   displayName: 'Production'      
+   condition: eq('${{ parameters.PROD_Dev }}', true)
+   jobs:    
+    - deployment: SupprimerSurLesServeurs_PROD_Dev
+      displayName: "Execution sur "
+      environment: 
+       name: 'PROD-Dev'
+       resourceType: VirtualMachine
+      strategy:
+       runOnce:
+        deploy:
+          steps:
+            - checkout: self                
+            - task: PowerShell@2
+              name: "SupprimerComposants"
+              continueOnError: true
+              displayName: "Supprimer les composants ${{parameters.nomComposants}}"
+              inputs:
+                pwsh: false
+                filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1' 
+                arguments: >
+                  -nomComposants: "${{parameters.nomComposants}}"

@@ -1,0 +1,158 @@
+name: "Mise à jour du dépôt «Compilation-Exec»"
+trigger: none
+appendCommitMessageToRunName: false
+
+schedules:
+  - cron: "0 9 * * 2"   # 09h00 UTC = 05h00 locale (UTC-4), le mardi 
+    displayName: "Run weekly on Tuesday at 05:00 (local time)"
+    branches:
+      include:
+        - master
+    always: true
+
+resources:
+  repositories:
+    - repository: Outils
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+parameters:
+  - name: repDepotsArtefacts
+    displayName: "Chemin local du dépôt des artefacts"
+    type: string
+    default: 'D:\DepotArtefacts'
+
+  - name: repDepotsArtefactsReseau
+    displayName: "Chemin réseau du dépôt des artefacts"
+    type: string
+    default: '\\fic2\Unit\DevOps_RRQAF\Artefacts'
+
+  - name: repDepotCompilationLocal
+    displayName: "Chemin local temporaire du dépôt compilation (Exec)"
+    type: string
+    default: 'D:\DepotBuild_MAJ_Temp\Compilation\Exec'
+
+  - name: repReseauDepotCompilation
+    displayName: "Chemin réseau du dépôt compilation (Exec)"
+    type: string
+    default: '\\fic2\Unit\DevOps_RRQAF\Compilation\Exec'
+
+  - name: majSeulement
+    displayName: "Ajouter seulement les nouveaux fichiers, ne pas supprimer les anciens?"
+    type: string
+    default: 'Non'
+
+pool:
+  name: Compilation RRQ-AF Logiciels specifiques #On veut exécuter les trois stages sur le même agent
+
+stages:
+
+  - stage: Replication_ReseauVersLocal
+    displayName: "Repliquer le depot reseau des artefact vers le depot local"    
+    jobs:
+      - job: ExecScript
+        displayName: "Repliquer le depot local «Compilation» vers le depot reseau"
+        timeoutInMinutes: 200        
+        steps:
+          - checkout: Outils          
+          - task: PowerShell@2
+            name: "TraiterReplicationDepotArtefact"
+            continueOnError: true
+            displayName: "Repliquer le dépôt des artefacts réseau sur le serveur ${{parameters.repDepotsArtefactsReseau}} vers le dépot réseau ${{parameters.repDepotsArtefacts}}"            
+            inputs:
+              pwsh: true
+              filePath: '$(Build.SourcesDirectory)\Pipelines\ST3.Outils.Script.Repliquer.DepotFichiers.ps1'
+              arguments: >
+                -cheminSource: "${{parameters.repDepotsArtefactsReseau}}"
+                -cheminDestination: "${{parameters.repDepotsArtefacts}}"
+                -fichierValidation: "GenerationEnCoursCompilation.txt"
+                -majSeulement: ${{ parameters.majSeulement }}
+
+  - stage: TraiterDepotCompilation
+    displayName: "Mise à jour du dépôt de compilation --> ${{parameters.repReseauDepotCompilation}}"
+    dependsOn:
+      - Replication_ReseauVersLocal 
+    jobs:
+      - job: ExecScript
+        displayName: "Extraction des binaires de tout les artefacts sur le serveur de compilation"
+        timeoutInMinutes: 200
+        steps:
+          - checkout: Outils
+
+          - task: PowerShell@2
+            displayName: "Lancer ST3.Script.TraiterDepotCompilation.ps1"
+            name: TraiterDepotCompilation   
+            continueOnError: true
+            inputs:
+              filePath: '$(Build.SourcesDirectory)\Deploiement\V2\Script\ST3.Script.TraiterDepotCompilation.ps1'
+              pwsh: true
+              arguments: >
+                -repertoireDepotsArtefacts "${{ parameters.repDepotsArtefacts }}"
+                -repertoireRacineDepotCompilation "${{ parameters.repDepotCompilationLocal }}"
+
+  - stage: Replication_VersDepotReseau
+    displayName: "Repliquer le depot local «Compilation» vers le depot reseau"
+    dependsOn:
+      - TraiterDepotCompilation # Permet de récupérer la variable etapeAlimenterDepotCompilationSucces            
+    variables:
+      - name: etapeAlimenterDepotCompilationSucces
+        value: $[ stageDependencies.TraiterDepotCompilation.ExecScript.outputs['TraiterDepotCompilation.etapeAlimenterDepotCompilationSucces'] ]
+    jobs:
+      - job: ExecScript
+        displayName: "Repliquer le depot local «Compilation» vers le depot reseau"
+        timeoutInMinutes: 200        
+        steps:
+          - checkout: Outils
+
+          # Affiche un message SI la variable est différente de 'Oui'
+          - task: PowerShell@2
+            name: AfficherRaisonSkipped
+            displayName: "Afficher pourquoi la réplication ne sera pas faite"
+            condition: ne(variables['etapeAlimenterDepotCompilationSucces'], 'Oui')
+            inputs:
+              pwsh: true
+              targetType: 'inline'
+              script: |
+                Write-Host "`n`ERREUR --> L'étape de réplication sera ignorée puisque l'étape précédente «TraiterDepotCompilation» n'a pas réussie.`n`n"
+                throw
+
+          # Tâche réelle de réplication - exécutée uniquement si la variable est Oui
+          - task: PowerShell@2
+            name: "Replication_VersDepotReseau"
+            continueOnError: true
+            displayName: "Repliquer le dépôt local ${{parameters.repDepotCompilationLocal}} vers le dépot réseau ${{parameters.repReseauDepotCompilation}}"
+            condition: eq(variables['etapeAlimenterDepotCompilationSucces'], 'Oui')
+            inputs:
+              pwsh: true
+              filePath: '$(Build.SourcesDirectory)\Pipelines\ST3.Outils.Script.Repliquer.DepotFichiers.ps1'
+              arguments: >
+                -cheminSource: "${{parameters.repDepotCompilationLocal}}"
+                -cheminDestination: "${{parameters.repReseauDepotCompilation}}"
+                -fichierValidation: "GenerationEnCoursCompilation.txt"
+                -majSeulement: ${{ parameters.majSeulement }}
+
+
+          - task: PowerShell@2
+            name: NettoyerDepotCompilationLocal_Temp
+            displayName: "Nettoyer le répertoire local temporaire de compilation : ${{ parameters.repDepotCompilationLocal }}"
+            condition: eq(variables['etapeAlimenterDepotCompilationSucces'], 'Oui')
+            inputs:
+              pwsh: true
+              targetType: 'inline'
+              script: |
+                $repertoire = "${{ parameters.repDepotCompilationLocal }}"
+                Write-Host "Suppression du contenu de : $repertoire"
+                if (Test-Path $repertoire) {
+                    Get-ChildItem -Path $repertoire -Recurse -Force | ForEach-Object {
+                        try {
+                            Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
+                        }
+                        catch {
+                            Write-Warning "Impossible de supprimer : $($_.FullName) - $($_.Exception.Message)"
+                        }
+                    }
+                    Write-Host "Le répertoire a été vidé (avec erreurs ignorées si présentes)."
+                } else {
+                    Write-Warning "Le répertoire n'existe pas : $repertoire"
+                }

@@ -1,0 +1,265 @@
+# ST3.Outils.Pipeline.Extends.SupprimerComposants.yml
+
+parameters:
+  - name: nomComposants
+    type: string
+    default: ''
+
+  - name: UNIT
+    type: boolean
+    default: false
+  - name: INTG
+    type: boolean
+    default: false
+  - name: SIMI
+    type: boolean
+    default: false
+  - name: SIML
+    type: boolean
+    default: false
+  - name: ACCP
+    type: boolean
+    default: false
+  - name: FORA
+    type: boolean
+    default: false
+  - name: PROD
+    type: boolean
+    default: false
+
+stages:
+
+# UNIT
+- ${{ if eq(parameters.UNIT, true) }}:
+  - stage: ExecutionDuScriptUNIT
+    displayName: 'Unitaire'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_UNIT
+        displayName: "Execution sur UNIT"
+        environment:
+          name: 'UNIT'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# INTG
+- ${{ if eq(parameters.INTG, true) }}:
+  - stage: ExecutionDuScriptINTG
+    displayName: 'Intégration'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_INTG
+        displayName: "Execution sur INTG"
+        environment:
+          name: 'INTG'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+      - deployment: SupprimerSurLesServeurs_INTH
+        displayName: "Execution sur INTH"
+        environment:
+          name: 'INTH'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+      - deployment: SupprimerSurLesServeurs_INTX
+        displayName: "Execution sur INTX"
+        environment:
+          name: 'INTX'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# SIMI
+- ${{ if eq(parameters.SIMI, true) }}:
+  - stage: ExecutionDuScriptSIMI
+    displayName: 'SIMI'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_SIMI
+        displayName: "Execution sur SIMI"
+        environment:
+          name: 'SIMI'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# SIML
+- ${{ if eq(parameters.SIML, true) }}:
+  - stage: ExecutionDuScriptSIML
+    displayName: 'SIML'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_SIML
+        displayName: "Execution sur SIML"
+        environment:
+          name: 'SIML'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# ACCP
+- ${{ if eq(parameters.ACCP, true) }}:
+  - stage: ExecutionDuScriptACCP
+    displayName: 'ACCP'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_ACCP
+        displayName: "Execution sur ACCP"
+        environment:
+          name: 'ACCP'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# FORA
+- ${{ if eq(parameters.FORA, true) }}:
+  - stage: ExecutionDuScriptFORA
+    displayName: 'FORA'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_FORA
+        displayName: "Execution sur FORA"
+        environment:
+          name: 'FORA'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+# PROD
+- ${{ if eq(parameters.PROD, true) }}:
+  - stage: ExecutionDuScriptPROD
+    displayName: 'Production'
+    jobs:
+      - deployment: SupprimerSurLesServeurs_PROD
+        displayName: "Execution sur PROD"
+        environment:
+          name: 'PROD'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}
+
+      - deployment: SupprimerSurLesServeurs_PREPROD
+        displayName: "Execution sur PRE-PROD"
+        environment:
+          name: 'PREPROD'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: PowerShell@2
+                  name: SupprimerComposants
+                  continueOnError: true
+                  displayName: "Supprimer les composants ${{ parameters.nomComposants }}"
+                  inputs:
+                    pwsh: false
+                    filePath: '.\Installation\ST3.Installation.Script.SupprimerComposants.ps1'
+                    arguments: >
+                      -nomComposants:${{ parameters.nomComposants }}

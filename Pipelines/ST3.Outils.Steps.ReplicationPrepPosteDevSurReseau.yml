@@ -1,0 +1,23 @@
+parameters:
+- name: repLocalPrepPosteDev
+  type: string
+- name: repReseauPrepPosteDev
+  type: string
+- name: majSeulement
+  type: string
+  default: 'Non'  # Par défaut, la synchronisation est complète (avec suppression)
+
+steps:  
+  - task: PowerShell@2
+    name: "Replication_PrepPosteDev"
+    continueOnError: true
+    displayName: "Repliquer le depot genere pour l'outil «Preparer poste developpeur» vers le depot reseau"
+    inputs:
+      pwsh: true
+      filePath: '$(Build.SourcesDirectory)\Pipelines\ST3.Outils.Script.Repliquer.DepotFichiers.ps1'
+      arguments: >
+        -cheminSource: "${{parameters.repLocalPrepPosteDev}}"
+        -cheminDestination: "${{parameters.repReseauPrepPosteDev}}"
+        -fichierValidation: "GenerationEnCours.txt"
+        -majSeulement: ${{ parameters.majSeulement }}
+

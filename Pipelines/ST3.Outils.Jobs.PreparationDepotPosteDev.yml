@@ -1,0 +1,44 @@
+parameters:
+  - name: FORCER
+    type: string
+    default: 'Non'   
+    values:
+      - Oui
+      - Non 
+  - name: repReseauArtefacts    
+    default: '\\fic2\Unit\DevOps_RRQAF\Artefacts'
+  - name: repLocalArtefacts
+    default: 'D:\DepotArtefacts'
+  - name: repLocalPrepPosteDev
+    default: 'D:\PrepPosteDev'
+  - name: repReseauPrepPosteDev
+    default: '\\fic2\Unit\DevOps_RRQAF\PrepPosteDev'
+  - name: heureActuelle
+    default: $[format('{0:HH}', pipeline.startTime)]
+
+stages:
+  - stage: PipelineExecution
+    displayName: "Mise a jour du depot de l'outil «Preparer poste developpeur» pour le pipeline actuel"
+    jobs:
+      - job: PreparerDepotPosteDev
+        displayName: "Preparer le depot poste developpeur"
+        pool: 
+          name: Compilation RRQ-AF     
+        continueOnError: true  # Le pipeline continue même s'il y a des erreurs'
+        steps:
+          - template: ST3.Outils.Steps.ReplicationDepotArtefactsSurServeur.yml
+            parameters:
+              repReseauArtefacts: "${{ parameters.repReseauArtefacts }}" 
+              repLocalArtefacts: "${{ parameters.repLocalArtefacts }}"
+
+          - template: ST3.Outils.Steps.PreparerRepertoiresPosteDeveloppeur.yml                      
+            parameters:
+              repLocalArtefacts: "${{ parameters.repLocalArtefacts }}"
+              repLocalPrepPosteDev: "${{ parameters.repLocalPrepPosteDev }}" 
+              FORCER: ${{ parameters.FORCER }}
+
+          - template: ST3.Outils.Steps.ReplicationPrepPosteDevSurReseau.yml
+            parameters:
+              repLocalPrepPosteDev: "${{ parameters.repLocalPrepPosteDev }}" 
+              repReseauPrepPosteDev: "${{ parameters.repReseauPrepPosteDev }}"
+              majSeulement: "Oui"

@@ -1,0 +1,87 @@
+#Permet de repliquer la branche vers de depot de recherche avance
+
+parameters:
+  - name: nomRepos
+    type: string
+    default: '' 
+    
+stages:
+- stage: ReplicationRechercheAvancee  
+  displayName: "Réplication vers dépôt recherche avancée"  
+  jobs:
+   - job: Replication
+     displayName: Replication
+     condition: and(succeeded(), ne('${{ parameters.nomRepos }}', ''))
+     variables:
+     - group: GrST3.Deploiement
+     pool : 
+       name: Compilation RRQ-AF        
+     steps: 
+         - checkout: self
+         - task: PowerShell@2
+           displayName: "Afficher les variable d'environnement"       
+           inputs:
+             pwsh: true            
+             targetType: 'inline'
+             script: 'get-childitem -path env:*'
+         - task: Powershell@2
+           name: 'ReplicationRechercheAvancee'
+           displayName: "Réplication vers dépôt recherche avancée"
+           inputs:
+             pwsh: true            
+             targetType: 'inline'
+             script: |    
+                $nomRepos = '${{parameters.nomRepos}}'
+                $nomBranche = '$(Build.SourceBranchName)'
+                $source = "$(Build.SourcesDirectory)"
+
+                if ($nomRepos -eq ''){
+                  write-Host "    ERREUR --> Le pipeline doit recevoir en parametre le nom du repos à répliquer."
+                  throw
+                }
+
+                if ($nomBranche -eq 'master'){
+                    $destination = "$(RepertoireRechercheAvancee)\Master\$nomRepos"
+                }
+                else{
+                    $destination = "$(RepertoireRechercheAvancee)\Dev\$nomRepos\$nomBranche"
+
+                    #Pour les branches Dev, on fait le ménage de ce qui est plus anciens que 60 jours.
+                    $destinationParent = "$(RepertoireRechercheAvancee)\Dev\$nomRepos"
+                    if (Test-Path -Path $destinationParent) {
+                      write-Host "Menage des dossiers plus vieux que 60 jours sous le répertoire $destinationParent"
+                      $list = Get-ChildItem -Path $destinationParent -Directory | where {$_.LastWriteTime -le $(get-date).Adddays(-60)}
+                      foreach($k in $list){Write-Output " Supression de " $k.name}
+                      Get-ChildItem -Path $destinationParent -Directory | where {$_.LastWriteTime -le $(get-date).Adddays(1)} | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue 
+                    }
+                    else{
+                      write-Host "Menage des dossiers, le répertoire $destinationParent n'existe pas"
+                    }
+                }
+                
+                write-host "----------------------------------------------------------"           
+                write-host "Nom du repo :" $nomRepos
+                write-host "Source      :" $source
+                write-host "Destination :" $destination
+                
+                write-host ""  
+                
+                $ErrorActionPreference = "Stop"
+                Set-PSDebug -Trace 0
+                
+                try 
+                {
+                    #Utilisation de Robocopy 
+                    Robocopy $source $destination /MIR /COPY:DAT /DCOPY:T /S /NP /R:3 /W:5
+
+                    Write-Host "Exit code de robocopy : " $lastexitcode
+                    if ($lastexitcode -lt 8) { $global:LASTEXITCODE = $null } else { Write-Error "ERREUR avec ROBOCOPY" }
+
+                    write-host "Copie des fichiers complétés"           
+                    write-host "----------------------------------------------------------"           
+                }
+                catch 
+                {
+                    Write-Host "Erreur lors de l'exécution du script ST3.Outils.Pipeline.ReplicationRechercheAvance $_"
+                    throw "Erreur lors de l'exécution du script ST3.Outils.Pipeline.ReplicationRechercheAvance $_"
+                }

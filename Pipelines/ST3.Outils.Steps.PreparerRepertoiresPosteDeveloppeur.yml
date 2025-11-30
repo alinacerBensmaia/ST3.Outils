@@ -1,0 +1,45 @@
+parameters:
+- name: repLocalArtefacts
+  type: string
+- name: repLocalPrepPosteDev
+  type: string
+- name: FORCER
+  type: string
+
+steps:
+  - task: PowerShell@2
+    displayName: "Definition de variables"
+    inputs:
+      pwsh: true
+      targetType: 'inline'
+      script: |
+        $heureActuelle = (Get-Date).ToString('HH')
+        $minutesActuelles = [int](Get-Date).ToString('mm')
+        $forcerMAJComplete = "Non"
+        $parametreForcer = "${{ parameters.FORCER }}"
+
+        Write-Host "La valeur de parametreForcer  --> $parametreForcer"
+        Write-Host "La valeur de heureActuelle    --> $heureActuelle"
+        Write-Host "La valeur de minutesActuelles --> $minutesActuelles"
+
+        if ($parametreForcer -eq "Oui" -or ($heureActuelle -eq "06" -and $minutesActuelles -ge 0 -and $minutesActuelles -le 15)) {
+          $forcerMAJComplete = "Oui"
+          Write-Host "La mise à jour complete du depot sera effectuee."
+        } else {
+          Write-Host "Mise à jour seulement des nouveaux artefacts."
+        }
+
+        Write-Host "##vso[task.setvariable variable=heureActuelle]$heureActuelle"
+        Write-Host "##vso[task.setvariable variable=forcerMAJComplete]$forcerMAJComplete"
+
+  - task: PowerShell@2
+    displayName: "Lancement du script PreparerRepertoiresPosteDeveloppeur"
+    continueOnError: true
+    inputs:
+      pwsh: true
+      filePath: '$(Build.SourcesDirectory)\Installation\ST3.Installation.Script.PreparerRepertoiresPosteDeveloppeur.ps1'
+      arguments: >
+        -cheminDepotArtefacts: '${{parameters.repLocalArtefacts}}'
+        -cheminPrepPosteDev: '${{parameters.repLocalPrepPosteDev}}'
+        -Forcer: '$(forcerMAJComplete)'
+        -estBavard: 'Oui'

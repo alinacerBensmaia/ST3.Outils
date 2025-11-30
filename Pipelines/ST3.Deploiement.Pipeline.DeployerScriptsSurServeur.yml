@@ -1,0 +1,26 @@
+#ST3.Deploiement.Pipeline.DeployerScriptsSurServeur.yml
+
+trigger: none
+
+resources:
+  repositories:
+    - repository: ST3.Outils.DevOps
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+extends:
+  template: Pipelines/Extends/ST3.Deploiement.Pipeline.Extends.DeployerScriptsSurServeur.yml@ST3.Outils.DevOps
+  parameters:
+    RQAF_pool: 'Compilation RRQ-AF'
+    environments:
+      - UNIT
+      - INTG
+      - INTH
+      - INTX
+      - SIMI
+      - ACCP
+      - FORA
+      - SIML
+      - PROD
+      - PROP

@@ -1,0 +1,27 @@
+# Pipeline de build qui permet de démarrer tous les tests automatisés des composants du dépot 
+# ST3.Test.Build.Template.TesterTout.yml 
+# ST3.Test.Deploiement.Template.TesterTout.yml
+# ST3.Test.Installation.Script.TesterTout.yml 
+
+trigger: none
+
+resources:
+  repositories:
+    - repository: Outils
+      type: git
+      name: ST3.Outils.DevOps
+      ref: Dev
+
+
+pool:
+    name: Azure Pipelines
+    vmImage: 'windows-latest'
+  
+
+
+stages:
+ - stage: TestDeploiement
+   displayName: Tests des templates et des scripts de deploiement
+   dependsOn: [] 
+   jobs:
+    - template: ..\..\Deploiement\Tests\ST3.Test.Deploiement.Template.DeployerDepotsUnitaire.yml

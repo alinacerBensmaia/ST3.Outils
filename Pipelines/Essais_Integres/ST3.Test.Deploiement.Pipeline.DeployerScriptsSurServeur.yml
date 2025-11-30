@@ -1,0 +1,196 @@
+# Deploiement dans l'environnement d'essais des scripts qui effectuent l'installation des artefacts sur les serveurs
+#   a deployer lors d'une fusion avec la branche master
+trigger: none
+
+pool:
+  name: Compilation RRQ-AF
+
+variables:
+- group: GrST3.Build.PathPhase
+- group: GrST3.Deploiement.PathDestination
+- name: RepertoireDestination
+  value: 'C:\RRQ\Libraire_DevOps\Outils\Scripts'
+- name: RepertoireDestinationReseau
+  value: '\\fic2\Unit\DevOps_RRQAF'
+stages:
+ - stage: Build
+   displayName : Compilation et creation artefact
+   jobs:
+    - job: CreationPackage
+      displayName: Creation du package
+      pool : 
+       name: Compilation RRQ-AF
+      steps: 
+       - task: CopyFiles@2
+         displayName: 'Copie des fichiers du repertoire Installation dans le repertoires des artefacts'
+         inputs:
+          SourceFolder: '$(Build.SourcesDirectory)\Installation'
+          Contents: '*.ps1'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+          overWrite: true       
+          
+
+       - task: CopyFiles@2
+         displayName: 'Copie du fichier ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1 dans le repertoires des artefacts'
+         inputs:
+          SourceFolder: '$(Build.SourcesDirectory)\Deploiement'
+          Contents: 'ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1'
+          TargetFolder: '$(build.artifactstagingdirectory)\Deploiement'
+          overWrite: true        
+
+       - task: CopyFiles@2
+         displayName: 'Copie du fichier ST20002_Serveurs.xml dans le repertoires des artefacts'
+         inputs:
+          SourceFolder: '\\Ziagvsdevq11\stcm\Depot\Parametres\Azure_FichiersServeurs'
+          Contents: 'ST20002_Serveurs.xml'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+          overWrite: true
+          
+
+       - task: CopyFiles@2
+         displayName: 'Copie du fichier XwXuServeurs.xml dans le repertoires des artefacts'
+         inputs:
+          SourceFolder: '\\Ziagvsdevq11\stcm\Depot\Parametres\Azure_FichiersServeurs'
+          Contents: 'XwXuServeurs.xml'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+          overWrite: true
+       - task: CopyFiles@2
+         displayName: 'Copie des fichiers dans le depôt du reseau pour poste dev'
+         inputs:
+          SourceFolder: '$(build.artifactstagingdirectory)\Scripts'
+          Contents: '**'
+          TargetFolder: '$(RepertoireDestinationReseau)\Installation'
+          OverWrite: True
+       - task: CopyFiles@2
+         displayName: 'Copie des fichiers serveurs STCM et SGW de Dev sur le serveur de compilation'
+         inputs:
+          SourceFolder: '\\Ziagvsdevq11\stcm\Depot\Parametres\Azure_FichiersServeurs'
+          Contents: '**'
+          TargetFolder: 'C:\RRQ\Libraire_DevOps\Outils\Scripts\Deploiement\Dev'
+          OverWrite: True
+          
+       - task: CopyFiles@2
+         displayName: 'Copie de ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1 sur serveur de compilation'
+         inputs:
+          SourceFolder: '$(build.artifactstagingdirectory)\Deploiement'
+          Contents: 'ST3.Deploiement.Script.GenererDemandeStcmSgw.ps1'
+          TargetFolder: '$(RepertoireDestination)\Deploiement'
+          OverWrite: True
+      
+       - task: CopyFiles@2
+         displayName: "Copie de l'outils vers l'artefact ST3.Installation.Script.Artefact.ActionInstallation.exe"
+         inputs:
+          SourceFolder: '\\Ziagvsdevq11\stcm\Depot\Parametres\Azure_Outils\ST3N953_ActionInstallation\bin'
+          Contents: '**'
+          TargetFolder: '$(build.artifactstagingdirectory)\Scripts'
+          OverWrite: True
+
+       - task: PublishBuildArtifacts@1
+         displayName: 'Publier artefact des scripts'
+         inputs:
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+          artifactName: '$(build.definitionname).$(build.buildnumber)_azure'
+
+ # UNITAIRE
+ - stage: UnitDev  
+   displayName: 'Deployer en Unitaire'   
+   dependsOn: 
+       - Build     
+   jobs:
+   - job: ValidationDeLancementUnit
+     displayName: "Approbation requise pour continuer le déploiement, voir message ici-bas:"      
+     pool: server
+     timeoutInMinutes: 1440 # 24h
+     steps:      
+       - task: ManualValidation@0
+         timeoutInMinutes: 1440 # 24h
+         inputs:
+           instructions: "SVP approuver le déploiement vers l'environnement "
+           onTimeout: 'reject'    
+
+   - deployment: DeploiementUnitaire
+     displayName: "Unitaire-Dev"
+     dependsOn:
+       ValidationDeLancementUnit
+     environment: 
+       name: 'UNIT-DEV'
+       resourceType: VirtualMachine
+     strategy:
+       runOnce:
+         deploy:
+           steps:            
+           - task: CopyFiles@2
+             inputs:
+               SourceFolder: '$(Pipeline.Workspace)\$(build.definitionname).$(build.buildnumber)_azure\Scripts'
+               Contents: '**'
+               TargetFolder: $(RepertoireDestination)
+               CleanTargetFolder: true
+
+ # INTEGRATION
+ - stage: INTGDev 
+   displayName: 'Integration-Dev'
+   dependsOn:
+   - UnitDev
+   jobs:   
+    - job: ValidationDeLancementIntg
+      displayName: "Approbation requise pour continuer le déploiement, voir message ici-bas:"      
+      pool: server
+      timeoutInMinutes: 1440 # 24h
+      steps:      
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # 24h
+          inputs:
+            instructions: "SVP approuver le déploiement vers l'environnement "
+            onTimeout: 'reject'    
+    - deployment: DeploiementIntegration
+      displayName: "Deploiement serveurs en integration"
+      dependsOn:
+       ValidationDeLancementIntg
+      environment: 
+       name: 'INTG-DEV'
+       resourceType: VirtualMachine
+      strategy:
+       runOnce:
+        deploy:
+          steps:    
+          - task: CopyFiles@2
+            inputs:
+             SourceFolder: '$(Pipeline.Workspace)\$(build.definitionname).$(build.buildnumber)_azure\Scripts'
+             Contents: '**'
+             TargetFolder: $(RepertoireDestination)
+             cleanTargetFolder: true          
+ 
+ # PRODUCTION
+ - stage: PRODDEV
+   displayName: 'Production-Dev'
+   dependsOn:
+   - INTGDev
+   jobs:
+    - job: ValidationDeLancementProd
+      displayName: "Approbation requise pour continuer le déploiement, voir message ici-bas:"      
+      pool: server
+      timeoutInMinutes: 1440 # 24h
+      steps:      
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # 24h
+          inputs:
+            instructions: "SVP approuver le déploiement vers l'environnement "
+            onTimeout: 'reject'    
+
+    - deployment: DeploiementProduction
+      displayName: "Deploiement serveurs en Production"
+      dependsOn:
+       ValidationDeLancementProd
+      environment: 
+       name: 'PROD-DEV'
+       resourceType: VirtualMachine
+      strategy:
+       runOnce:
+        deploy:
+          steps:          
+          - task: CopyFiles@2
+            inputs:
+             SourceFolder: '$(Pipeline.Workspace)\$(build.definitionname).$(build.buildnumber)_azure\Scripts'
+             Contents: '**'
+             TargetFolder: $(RepertoireDestination)
+             cleanTargetFolder: true

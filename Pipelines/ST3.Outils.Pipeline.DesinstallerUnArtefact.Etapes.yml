@@ -1,0 +1,100 @@
+
+# ST3.Outils.Pipeline.DesinstallerUnArtefact.Etapes
+parameters:
+  - name: environments
+    type: object
+  - name: nomArtefact
+    type: string      
+  - name: desinstallationNonPhasable
+    type: boolean
+    default: false
+  - name: numeroDemandeChangement
+    type: string      
+    default: ""
+  - name: cheminArtefactsDepotUnit
+    type: string      
+    default: '\\fic2\Unit\DevOps_RRQAF\Artefacts'
+  - name: cheminArtefactsDepotUnit_Dev
+    type: string      
+    default: '\\fic2\De\DevOps_RRQAF\Artefacts'
+
+stages:
+
+# Étape unique AVANT la désinstallation
+- stage: NettoyageDepotUnitaire
+  displayName: "Retirer l'artefact du dépôt unitaire"
+  jobs:
+    - job: RetraitArtefact
+      displayName: "Retirer l'artefact selon l'environnement cible"
+      steps:
+        - checkout: self
+        - ${{ if containsValue(parameters.environments, 'UNIT') }}:
+            - task: PowerShell@2
+              name: RetirerDepotUnit
+              displayName: "Retirer l'artefact du dépôt UNIT"
+              inputs:
+                targetType: 'filePath'
+                pwsh: true
+                filePath: 'Pipelines/script/ST3.Script.SupprimerUnRepertoire.ps1'
+                arguments: >
+                  -NomDossier "${{ parameters.nomArtefact }}"
+                  -RepertoireCible "${{ parameters.cheminArtefactsDepotUnit }}"
+
+        - ${{ if containsValue(parameters.environments, 'UNIT-Dev') }}:
+            - task: PowerShell@2
+              name: RetirerDepotUnitDev
+              displayName: "Retirer l'artefact du dépôt UNIT-Dev"
+              inputs:
+                targetType: 'filePath'
+                filePath: 'Pipelines/script/ST3.Script.SupprimerUnRepertoire.ps1'
+                arguments: >
+                  -NomDossier "${{ parameters.nomArtefact }}"
+                  -RepertoireCible "${{ parameters.cheminArtefactsDepotUnit_Dev }}"
+
+# Boucle sur les environnements pour désinstallation
+- ${{ each envName in parameters.environments }}:
+    - stage: Desinstallation_${{ replace(envName, '-', '_') }}
+      displayName: "Traiter ${{ replace(envName, '-', '_') }}"
+      dependsOn: NettoyageDepotUnitaire
+      jobs:
+        - deployment: Traiter_${{ replace(envName, '-', '_') }}
+          displayName: "Exécution sur ${{ envName }}"
+          environment:
+            name: ${{ envName }}
+            resourceType: VirtualMachine
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - checkout: self
+
+                  - ${{ if eq(envName, 'PROD') }}:
+                      - task: PowerShell@2
+                        name: VerifierNumeroDemandeChangement
+                        displayName: "Vérifier le numéro de demande de changement pour PROD"
+                        inputs:
+                          pwsh: true
+                          targetType: 'inline'
+                          script: |
+                            $numero = "${{ parameters.numeroDemandeChangement }}"
+                            if ([string]::IsNullOrWhiteSpace($numero)) {
+                              Write-Host "`n`nERREUR: Le paramètre 'Numero de demande de changement' est obligatoire pour l'environnement PROD.`n`n"
+                              throw
+                            }
+                            elseif (-not ($numero -match '^(?i)CHG\d{7}$')) {
+                              Write-Host "`n`nERREUR: Le paramètre 'Numero de demande de changement' est obligatoire pour l'environnement PROD et doit commencer par 'CHG' suivi de 7 chiffres (ex: CHG1234567).`n`n"
+                              throw
+                            }                          
+                            Write-Host "Ajout du tag demande de changement..."
+                            Write-Host "##vso[build.addbuildtag]$numero"
+
+                  - task: PowerShell@2
+                    name: DesinstallerUnArtefact
+                    continueOnError: true
+                    displayName: "Désinstaller l'artefact ${{ parameters.nomArtefact }}"
+                    inputs:
+                      pwsh: true
+                      filePath: '.\Installation\ST3.Installation.Script.DesinstallerUnArtefact.ps1'
+                      arguments: >                          
+                        -desinstallationNonPhasable:${{ parameters.desinstallationNonPhasable }}
+                        -nomArtefact:"${{ parameters.nomArtefact }}"

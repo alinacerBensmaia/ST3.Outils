@@ -1,0 +1,66 @@
+# ST3.Outils.Pipeline.SupprimerComposants.yml
+trigger: none
+pr: none
+
+name: 'Supprimer des composants sur les serveurs'
+appendCommitMessageToRunName: false
+
+resources:
+  repositories:
+    - repository: ST3.Outils.DevOps
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+parameters:
+  - name: nomComposants
+    type: string
+    default: ''
+    displayName: "Nom des composants ? (C:\\rrq\\exec\\test.dll;C:\\rrq\\exec\\test.pdb)"
+
+  - name: UNIT
+    displayName: Unitaire
+    type: boolean
+    default: false
+
+  - name: INTG
+    displayName: Intégration
+    type: boolean
+    default: false
+
+  - name: SIMI
+    displayName: Intégration Simulation
+    type: boolean
+    default: false
+
+  - name: SIML
+    displayName: Simulation
+    type: boolean
+    default: false
+
+  - name: ACCP
+    displayName: Acceptation
+    type: boolean
+    default: false
+
+  - name: FORA
+    displayName: Formation Acceptation
+    type: boolean
+    default: false
+
+  - name: PROD
+    displayName: Production
+    type: boolean
+    default: false
+
+extends:
+  template: Pipelines/Extends/ST3.Outils.Pipeline.Extends.SupprimerComposants.yml@ST3.Outils.DevOps
+  parameters:
+    nomComposants: ${{ parameters.nomComposants }}
+    UNIT: ${{ parameters.UNIT }}
+    INTG: ${{ parameters.INTG }}
+    SIMI: ${{ parameters.SIMI }}
+    SIML: ${{ parameters.SIML }}
+    ACCP: ${{ parameters.ACCP }}
+    FORA: ${{ parameters.FORA }}
+    PROD: ${{ parameters.PROD }}

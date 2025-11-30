@@ -1,0 +1,41 @@
+# ST3.Outils.Pipeline.SupprimerUnArtefactEnAttente.yml
+
+trigger: none
+pr: none
+
+resources:
+  repositories:
+    - repository: ST3.Outils.DevOps
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+parameters:
+  - name: environnement
+    displayName: 'Dans quel environnement?'
+    type: string
+    default: 'UNIT'
+    values:
+      - UNIT
+      - INTG
+      - INTH
+      - INTX
+      - SIMI
+      - SIML
+      - ACCP
+      - FORA
+      - PROD
+      - UNIT-DEV
+      - INTG-DEV
+      - PROD-DEV
+
+  - name: nomArtefact
+    displayName: Nom de l'artefact?
+    type: string
+    default: ''
+
+extends:
+  template: Pipelines/Extends/ST3.Outils.Pipeline.Extends.SupprimerUnArtefactEnAttente.yml@ST3.Outils.DevOps
+  parameters:
+    environnement: ${{ parameters.environnement }}
+    nomArtefact: ${{ parameters.nomArtefact }}

@@ -1,0 +1,15 @@
+#ST3.Deploiement.Pipeline.ExtraireContenuServeur.yml
+
+trigger: none
+
+resources:
+  repositories:
+    - repository: ST3.Outils.DevOps
+      type: git
+      name: ST3.Outils.DevOps
+      ref: master
+
+extends:
+  template: Pipelines/Extends/ST3.Deploiement.Pipeline.Extends.ExtraireContenuServeur.yml@ST3.Outils.DevOps
+  parameters:
+    RQAF_pool: 'Compilation RRQ-AF'

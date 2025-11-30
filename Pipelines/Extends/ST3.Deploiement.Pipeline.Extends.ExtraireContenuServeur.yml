@@ -1,0 +1,61 @@
+#ST3.Deploiement.Pipeline.Extends.ExtraireContenuServeur.yml
+
+parameters:
+  - name: RQAF_pool
+    default: 'Compilation RRQ-AF'
+
+  - name: environments
+    type: object
+    default:
+      - 'UNIT'
+      - 'INTG'
+      - 'INTH'
+      - 'INTX'
+      - 'SIMI'
+      - 'ACCP'
+      - 'FORA'
+      - 'SIML'
+      - 'PROD'
+      - 'PROP'
+
+variables:
+  - group: GrST3.Build.PathPhase
+  - group: GrST3.Deploiement.PathDestination
+  - name: scriptConsulterInstallation
+    value: >
+      clear-host; 
+      $artefacts = Get-ChildItem -path "C:\RRQ\Libraire_DevOps\Artefacts\Installes\*";
+      if ($artefacts -eq $Null) {
+        write-host "Aucun artefact installé sur le serveur"
+      } else {
+        Get-ChildItem -path "C:\RRQ\Libraire_DevOps\Artefacts\Installes\*" |
+        Foreach {
+          $Files = Get-ChildItem $_.FullName -Recurse -File;
+          $LastWriteTime = (Get-ChildItem $_.FullName -ErrorAction SilentlyContinue).LastWriteTime.ToString();
+          [PSCustomObject]@{
+            Artefacts = $_.Name;
+            Derniere_Modification = $LastWriteTime
+          }
+        }
+      }
+
+stages:
+# Boucle correctement placée dans `stages`
+- ${{ each env in parameters.environments }}:
+  - stage: ${{ env }}
+    displayName: "🔍 Inspection des artefacts sur ${{ env }}"
+    jobs:
+      - deployment: Deploy_${{ env }}
+        environment:
+          name: ${{ env }}
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: PowerShell@2
+                  displayName: 'Exécuter le script de consultation'
+                  inputs:
+                    targetType: 'inline'
+                    script: ${{ variables.scriptConsulterInstallation }}
+                    errorActionPreference: 'SilentlyContinue'

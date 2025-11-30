@@ -1,0 +1,27 @@
+trigger: none
+
+pool:
+  name: Compilation RRQ-AF
+
+name: 'Désinstaller un artefact sur les serveurs'
+appendCommitMessageToRunName: false
+
+parameters:
+  - name: nomArtefact
+    displayName: "Nom de l'artefact? (Exemple: FC_Fichier_Inscription_Clientele.Web.20240910.1.Phase6_azure) Note: Si une versions plus ancienne de l'artefact est présente sur le serveur, elle sera supprimée."
+    type: string
+    default: ''
+
+  - name: desinstallationNonPhasable
+    displayName: Retirer aussi les composants non phasables? 
+    type: boolean
+    default: false
+
+extends:
+  template: ../ST3.Outils.Pipeline.DesinstallerUnArtefact.Etapes.yml
+  parameters:
+    environments:
+      - 'UNIT-Dev'
+      - 'INTG-Dev'
+    nomArtefact: ${{ parameters.nomArtefact }}    
+    desinstallationNonPhasable: ${{ parameters.desinstallationNonPhasable }}

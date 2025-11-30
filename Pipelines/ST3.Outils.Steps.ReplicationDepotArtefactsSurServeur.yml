@@ -1,0 +1,19 @@
+parameters:
+- name: repReseauArtefacts
+  type: string
+- name: repLocalArtefacts
+  type: string
+
+steps:
+  - checkout: Outils
+    clean: true  
+  - task: PowerShell@2
+    name: "Replication_Artefacts"
+    continueOnError: true
+    displayName: 'Repliquer le depot des artefacts vers le serveur de traitement'
+    inputs:
+      pwsh: true
+      filePath: '.\Pipelines\ST3.Outils.Script.Repliquer.DepotFichiers.ps1' #filePath: '$(Build.SourcesDirectory)\ST3.Outils.Script.Repliquer.DepotFichiers.ps1'
+      arguments: >
+        -cheminSource: "${{parameters.repReseauArtefacts}}"
+        -cheminDestination: "${{parameters.repLocalArtefacts}}"        
